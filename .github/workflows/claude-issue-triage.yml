@@ -95,32 +95,26 @@ jobs:
 
             gh issue comment ${{ github.event.issue.number }} --body-file /tmp/diagnostico.md
 
-            El comentario debe ir integramente EN ESPANOL y seguir exactamente esta estructura:
+            El comentario debe ser MARKDOWN VALIDO que GitHub entienda, ir en ESPANOL,
+            y ser CONCISO (máx 500 palabras). Estructura:
 
             ```markdown
-            ## 🔍 Diagnóstico automático
+            ## 🔍 Diagnóstico
 
-            **Resumen:** <1-2 frases reformulando el problema o la petición>
+            **Resumen:** <1-2 frases>
 
             **Tipo:** Bug | Mejora | Documentación | Pregunta
-            **Clasificación:** <labels asignados y por qué, en una línea>
 
-            ### Archivos y funciones implicados
-            - `game.js:<línea>` — `<función>` — <qué hace y por qué es relevante>
+            **Ubicación:** game.js:<línea> / index.html:<línea> / etc
 
-            ### Análisis
-            <Causa raíz probable si es un bug, o qué hay que construir si es una mejora.
-            Si falta información, di exactamente qué datos hacen falta.>
+            **Causa raíz:** <1 párrafo máximo: qué está roto o qué falta>
 
-            ### Enfoque de solución propuesto
-            1. <paso concreto>
-            2. <paso concreto>
+            **Solución:** <3-5 pasos concretos, numerados>
 
-            ### Riesgos y consideraciones
-            - <efectos colaterales, casos límite, qué probar a mano>
+            **Riesgos:** <1 línea si aplica>
 
             ---
-            *Análisis generado automáticamente. Para implementar la solución, menciona `@claude` en un comentario de este issue.*
+            *Análisis automático. Para implementar, menciona `@claude`.*
             ```
 
             ## Reglas
