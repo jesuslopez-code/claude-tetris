@@ -13,7 +13,15 @@ const COLORS = [
   '#e57373', // Z - red
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
+  '#ff5252', // bomba - rojo
+  '#ffe082', // single - dorado
+  '#b0bec5', // hueca - gris
 ];
+
+// Tipos especiales: no salen en el sorteo normal de tetrominós.
+const BOMB = 8;
+const SINGLE = 9;
+const HOLLOW = 10;
 
 const PIECES = [
   null,
@@ -24,7 +32,15 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8]],                                      // bomba
+  [[9]],                                      // single
+  [[10,10,10],[10,0,10],[10,10,10]],          // hueca
 ];
+
+const BOMB_RADIUS = 1;      // 1 = área 3x3
+const BOMB_BLOCK_SCORE = 50;
+const HOLLOW_CHANCE = 0.08; // solo en modo desafío
+const FLASH_MS = 150;
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
@@ -45,7 +61,8 @@ const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
-let hold, holdUsed, combo;
+let hold, holdUsed, combo, pendingReward, flashCells, flashUntil;
+let mode = 'classic';
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -57,6 +74,7 @@ function makePiece(type) {
 }
 
 function randomPiece() {
+  if (mode === 'challenge' && Math.random() < HOLLOW_CHANCE) return makePiece(HOLLOW);
   return makePiece(Math.floor(Math.random() * 7) + 1);
 }
 
@@ -83,6 +101,7 @@ function rotateCW(shape) {
 }
 
 function tryRotate() {
+  if (current.type === BOMB || current.type === SINGLE) return;
   const rotated = rotateCW(current.shape);
   const kicks = [0, -1, 1, -2, 2];
   for (const kick of kicks) {
@@ -114,6 +133,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     combo++;
+    if (cleared === 4) pendingReward = SINGLE; // Tetris: premio de pieza 1x1
     score += (LINE_SCORES[cleared] || 0) * level * combo;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
@@ -145,10 +165,34 @@ function softDrop() {
   }
 }
 
+// La bomba no se fusiona con el tablero: destruye el área a su alrededor
+// y desaparece. No aplica gravedad: dejar huecos es parte de la mecánica.
+function explode(cx, cy) {
+  let destroyed = 0;
+  flashCells = [];
+  for (let r = cy - BOMB_RADIUS; r <= cy + BOMB_RADIUS; r++) {
+    for (let c = cx - BOMB_RADIUS; c <= cx + BOMB_RADIUS; c++) {
+      if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+      if (board[r][c]) {
+        board[r][c] = 0;
+        destroyed++;
+      }
+      flashCells.push({ x: c, y: r });
+    }
+  }
+  flashUntil = performance.now() + FLASH_MS;
+  score += destroyed * BOMB_BLOCK_SCORE;
+}
+
 function lockPiece() {
   if (gameOver) return;
-  merge();
-  if (clearLines() === 0) combo = 0;
+  if (current.type === BOMB) {
+    // Turno neutro: no rompe la racha de combo ni la alimenta.
+    explode(current.x, current.y);
+  } else {
+    merge();
+    if (clearLines() === 0) combo = 0;
+  }
   holdUsed = false;
   spawn();
   updateHUD();
@@ -170,7 +214,9 @@ function holdPiece() {
 
 function spawn() {
   current = next;
-  next = randomPiece();
+  // La recompensa se ve primero en el panel NEXT y llega al turno siguiente.
+  next = pendingReward ? makePiece(pendingReward) : randomPiece();
+  pendingReward = null;
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -194,7 +240,29 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   // highlight
   context.fillStyle = 'rgba(255,255,255,0.12)';
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  if (colorIndex === BOMB) {
+    context.fillStyle = 'rgba(0,0,0,0.55)';
+    context.beginPath();
+    context.arc(x * size + size / 2, y * size + size / 2, size * 0.28, 0, Math.PI * 2);
+    context.fill();
+  }
   context.globalAlpha = 1;
+}
+
+// Destello de la explosión, gestionado dentro del bucle de animación
+// (sin setTimeout): pausa y game over lo congelan igual que al resto.
+function drawFlash() {
+  if (!flashCells.length) return;
+  const remaining = flashUntil - performance.now();
+  if (remaining <= 0) {
+    flashCells = [];
+    return;
+  }
+  ctx.globalAlpha = (remaining / FLASH_MS) * 0.8;
+  ctx.fillStyle = '#ffffff';
+  for (const cell of flashCells)
+    ctx.fillRect(cell.x * BLOCK + 1, cell.y * BLOCK + 1, BLOCK - 2, BLOCK - 2);
+  ctx.globalAlpha = 1;
 }
 
 function drawGrid() {
@@ -222,6 +290,8 @@ function draw() {
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
+
+  drawFlash();
 
   // ghost
   const gy = ghostY();
@@ -309,6 +379,9 @@ function init() {
   combo = 0;
   hold = null;
   holdUsed = false;
+  pendingReward = null;
+  flashCells = [];
+  flashUntil = 0;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
