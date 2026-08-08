@@ -33,6 +33,23 @@
         </div>
 
         <div class="panel-section">
+          <span class="label">MODO</span>
+          <span class="mode-value" id="mode-label">CLÁSICO</span>
+        </div>
+
+        <div class="panel-section skills">
+          <span class="label">HABILIDADES</span>
+          <div class="charge-bar" role="progressbar" aria-label="Carga de habilidad" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="charge-fill" id="charge-fill"></div>
+          </div>
+          <span class="skill-uses">Usos: <b id="skill-uses">0</b>/3</span>
+          <ul>
+            <li class="skill-row" id="skill-bomb"><kbd>1</kbd> Bomba 3×3</li>
+            <li class="skill-row" id="skill-single"><kbd>2</kbd> Pieza 1×1</li>
+          </ul>
+        </div>
+
+        <div class="panel-section">
           <span class="label">HOLD</span>
           <canvas id="hold-canvas" width="120" height="120"></canvas>
         </div>
@@ -50,6 +67,8 @@
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
             <li><kbd>C</kbd><kbd>Shift</kbd> reservar</li>
+            <li><kbd>1</kbd> bomba</li>
+            <li><kbd>2</kbd> pieza 1×1</li>
             <li><kbd>P</kbd> pausa</li>
           </ul>
         </div>
@@ -60,7 +79,11 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+        <button id="restart-btn" class="btn">Reiniciar</button>
+        <div id="mode-select" class="mode-select hidden">
+          <button id="mode-classic" class="btn" type="button">Clásico</button>
+          <button id="mode-challenge" class="btn" type="button">Desafío</button>
+        </div>
       </div>
     </div>
   </div>

@@ -42,6 +42,10 @@ const BOMB_BLOCK_SCORE = 50;
 const HOLLOW_CHANCE = 0.08; // solo en modo desafío
 const FLASH_MS = 150;
 
+const CHALLENGE_ROWS = 6;   // filas pre-colocadas en modo desafío
+const CHARGE_PER_USE = 4;   // líneas necesarias por uso de habilidad
+const MAX_USES = 3;
+
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
 const canvas = document.getElementById('board');
@@ -59,13 +63,36 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const modeLabel = document.getElementById('mode-label');
+const modeSelect = document.getElementById('mode-select');
+const modeClassicBtn = document.getElementById('mode-classic');
+const modeChallengeBtn = document.getElementById('mode-challenge');
+const chargeFill = document.getElementById('charge-fill');
+const chargeBar = chargeFill.parentElement;
+const skillUsesEl = document.getElementById('skill-uses');
+const skillRows = [document.getElementById('skill-bomb'), document.getElementById('skill-single')];
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let hold, holdUsed, combo, pendingReward, flashCells, flashUntil;
 let mode = 'classic';
+let charge, skillUses, selectingMode;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+}
+
+// Tablero del modo desafío: filas inferiores pre-pobladas dejando entre 2 y 4
+// huecos por fila, así ninguna está completa al empezar.
+function challengeBoard() {
+  const b = createBoard();
+  for (let r = ROWS - CHALLENGE_ROWS; r < ROWS; r++) {
+    const holes = new Set();
+    const holeCount = 2 + Math.floor(Math.random() * 3);
+    while (holes.size < holeCount) holes.add(Math.floor(Math.random() * COLS));
+    for (let c = 0; c < COLS; c++)
+      if (!holes.has(c)) b[r][c] = Math.floor(Math.random() * 7) + 1;
+  }
+  return b;
 }
 
 function makePiece(type) {
@@ -120,6 +147,30 @@ function merge() {
         board[current.y + r][current.x + c] = current.shape[r][c];
 }
 
+// Cada línea limpiada suma carga; al llenarse la barra se gana un uso de
+// habilidad, hasta MAX_USES. Con los usos al tope la barra queda llena.
+function addCharge(amount) {
+  charge += amount;
+  while (charge >= CHARGE_PER_USE && skillUses < MAX_USES) {
+    charge -= CHARGE_PER_USE;
+    skillUses++;
+  }
+  if (skillUses >= MAX_USES) charge = CHARGE_PER_USE;
+}
+
+// Convierte la pieza actual en una especial. Si no cabe donde está, no
+// gasta el uso.
+function useSkill(type) {
+  if (gameOver || paused || skillUses === 0) return;
+  const piece = makePiece(type);
+  piece.y = current.y;
+  if (collide(piece.shape, piece.x, piece.y)) return;
+  current = piece;
+  skillUses--;
+  updateHUD();
+  draw();
+}
+
 function clearLines() {
   let cleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
@@ -134,6 +185,7 @@ function clearLines() {
     lines += cleared;
     combo++;
     if (cleared === 4) pendingReward = SINGLE; // Tetris: premio de pieza 1x1
+    addCharge(cleared);
     score += (LINE_SCORES[cleared] || 0) * level * combo;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
@@ -229,6 +281,11 @@ function updateHUD() {
   levelEl.textContent = level;
   comboEl.textContent = combo >= 2 ? `x${combo}` : '—';
   comboEl.classList.toggle('combo-active', combo >= 2);
+  const pct = Math.round((charge / CHARGE_PER_USE) * 100);
+  chargeFill.style.width = `${pct}%`;
+  chargeBar.setAttribute('aria-valuenow', pct);
+  skillUsesEl.textContent = skillUses;
+  for (const row of skillRows) row.classList.toggle('skill-off', skillUses === 0);
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -333,11 +390,13 @@ function endGame() {
   animId = null;
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  restartBtn.classList.remove('hidden');
+  modeSelect.classList.remove('hidden'); // permite cambiar de modo al reiniciar
   overlay.classList.remove('hidden');
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (gameOver || selectingMode) return;
   paused = !paused;
   if (!paused) {
     overlay.classList.add('hidden');
@@ -348,6 +407,8 @@ function togglePause() {
     animId = null;
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    restartBtn.classList.remove('hidden');
+    modeSelect.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
 }
@@ -372,7 +433,7 @@ function loop(ts) {
 }
 
 function init() {
-  board = createBoard();
+  board = mode === 'challenge' ? challengeBoard() : createBoard();
   score = 0;
   lines = 0;
   level = 1;
@@ -382,6 +443,9 @@ function init() {
   pendingReward = null;
   flashCells = [];
   flashUntil = 0;
+  charge = 0;
+  skillUses = 0;
+  selectingMode = false;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
@@ -392,6 +456,8 @@ function init() {
   drawHold();
   updateHUD();
   overlay.classList.add('hidden');
+  modeSelect.classList.add('hidden');
+  restartBtn.classList.remove('hidden');
   if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -422,11 +488,50 @@ document.addEventListener('keydown', e => {
     case 'ShiftRight':
       holdPiece();
       break;
+    case 'Digit1':
+      useSkill(BOMB);
+      break;
+    case 'Digit2':
+      useSkill(SINGLE);
+      break;
   }
   updateHUD();
 });
 
 restartBtn.addEventListener('click', init);
+
+const MODE_STORAGE_KEY = 'tetris-mode';
+
+function applyMode(value) {
+  mode = value === 'challenge' ? 'challenge' : 'classic';
+  modeLabel.textContent = mode === 'challenge' ? 'DESAFÍO' : 'CLÁSICO';
+}
+
+function initMode() {
+  applyMode(localStorage.getItem(MODE_STORAGE_KEY));
+}
+
+// Al cargar se muestra el selector de modo con el juego detenido.
+function openModeSelect() {
+  selectingMode = true;
+  paused = true;
+  if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
+  animId = null;
+  overlayTitle.textContent = 'ELIGE MODO';
+  overlayScore.textContent = '';
+  restartBtn.classList.add('hidden');
+  modeSelect.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+}
+
+function startMode(value) {
+  localStorage.setItem(MODE_STORAGE_KEY, value);
+  applyMode(value);
+  init();
+}
+
+modeClassicBtn.addEventListener('click', () => startMode('classic'));
+modeChallengeBtn.addEventListener('click', () => startMode('challenge'));
 
 const THEME_STORAGE_KEY = 'tetris-theme';
 
@@ -453,4 +558,6 @@ themeToggle.addEventListener('click', () => {
 });
 
 initTheme();
+initMode();
 init();
+openModeSelect();

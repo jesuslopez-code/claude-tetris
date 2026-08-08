@@ -28,6 +28,8 @@
   --toggle-border: #3a3a5a;
   --combo-color: #ffb74d;
   --combo-glow: rgba(255, 183, 77, 0.35);
+  --charge-bg: #22223a;
+  --charge-fill: #7aa2f7;
 }
 
 body[data-theme="light"] {
@@ -54,6 +56,8 @@ body[data-theme="light"] {
   --toggle-border: #c7c7d6;
   --combo-color: #d97706;
   --combo-glow: rgba(217, 119, 6, 0.25);
+  --charge-bg: #dcdce6;
+  --charge-fill: #3955c4;
 }
 
 body {
@@ -166,6 +170,57 @@ body {
   text-shadow: 0 0 12px var(--combo-glow);
 }
 
+/* ---- Modo y habilidades ---- */
+.mode-value {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--value-color);
+}
+
+.charge-bar {
+  height: 8px;
+  background: var(--charge-bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.charge-fill {
+  height: 100%;
+  width: 0;
+  background: var(--charge-fill);
+  transition: width 0.2s;
+}
+
+.skill-uses {
+  font-size: 11px;
+  color: var(--controls-color);
+}
+
+.skill-uses b {
+  color: var(--value-color);
+}
+
+.skills ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-row {
+  font-size: 12px;
+  color: var(--controls-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s;
+}
+
+.skill-row.skill-off {
+  opacity: 0.35;
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;
@@ -229,7 +284,7 @@ kbd {
   color: var(--overlay-score-color);
 }
 
-#restart-btn {
+.btn {
   margin-top: 8px;
   background: var(--btn-bg);
   color: var(--btn-color);
@@ -243,6 +298,19 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+.btn:hover {
   background: var(--btn-hover);
+}
+
+.btn.hidden {
+  display: none;
+}
+
+.mode-select {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-select.hidden {
+  display: none;
 }
