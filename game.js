@@ -137,6 +137,7 @@ function softDrop() {
 }
 
 function lockPiece() {
+  if (gameOver) return;
   merge();
   clearLines();
   spawn();
@@ -220,8 +221,10 @@ function drawNext() {
 }
 
 function endGame() {
+  if (gameOver) return;
   gameOver = true;
-  cancelAnimationFrame(animId);
+  if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
+  animId = null;
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
@@ -231,10 +234,12 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
     lastTime = performance.now();
-    loop(lastTime);
+    if (animId === null || animId === undefined) animId = requestAnimationFrame(loop);
   } else {
-    cancelAnimationFrame(animId);
+    if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
+    animId = null;
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
     overlay.classList.remove('hidden');
@@ -242,6 +247,7 @@ function togglePause() {
 }
 
 function loop(ts) {
+  if (gameOver || paused) { animId = null; return; }
   const dt = ts - lastTime;
   lastTime = ts;
   dropAccum += dt;
@@ -254,6 +260,8 @@ function loop(ts) {
     }
   }
   draw();
+  // lockPiece() may have triggered game over: stop rescheduling
+  if (gameOver) { animId = null; return; }
   animId = requestAnimationFrame(loop);
 }
 
@@ -271,7 +279,7 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
-  cancelAnimationFrame(animId);
+  if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
