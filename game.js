@@ -32,9 +32,12 @@ const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
+const holdCanvas = document.getElementById('hold-canvas');
+const holdCtx = holdCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const comboEl = document.getElementById('combo');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
@@ -42,15 +45,19 @@ const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let hold, holdUsed, combo;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+function makePiece(type) {
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+}
+
+function randomPiece() {
+  return makePiece(Math.floor(Math.random() * 7) + 1);
 }
 
 function collide(shape, ox, oy) {
@@ -106,11 +113,13 @@ function clearLines() {
   }
   if (cleared) {
     lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
+    combo++;
+    score += (LINE_SCORES[cleared] || 0) * level * combo;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -139,8 +148,24 @@ function softDrop() {
 function lockPiece() {
   if (gameOver) return;
   merge();
-  clearLines();
+  if (clearLines() === 0) combo = 0;
+  holdUsed = false;
   spawn();
+  updateHUD();
+}
+
+function holdPiece() {
+  if (gameOver || paused || holdUsed) return;
+  const stored = hold;
+  hold = makePiece(current.type);
+  if (stored === null) {
+    spawn();
+  } else {
+    current = makePiece(stored.type);
+    if (collide(current.shape, current.x, current.y)) endGame();
+  }
+  holdUsed = true;
+  drawHold();
 }
 
 function spawn() {
@@ -156,6 +181,8 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  comboEl.textContent = combo >= 2 ? `x${combo}` : '—';
+  comboEl.classList.toggle('combo-active', combo >= 2);
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -209,15 +236,24 @@ function draw() {
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
 }
 
-function drawNext() {
+function drawPreview(context, canvasEl, piece) {
   const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  const shape = next.shape;
+  context.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  if (!piece) return;
+  const shape = PIECES[piece.type];
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
-      drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+      drawBlock(context, offX + c, offY + r, shape[r][c], NB);
+}
+
+function drawNext() {
+  drawPreview(nextCtx, nextCanvas, next);
+}
+
+function drawHold() {
+  drawPreview(holdCtx, holdCanvas, hold);
 }
 
 function endGame() {
@@ -270,6 +306,9 @@ function init() {
   score = 0;
   lines = 0;
   level = 1;
+  combo = 0;
+  hold = null;
+  holdUsed = false;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
@@ -277,6 +316,7 @@ function init() {
   lastTime = performance.now();
   next = randomPiece();
   spawn();
+  drawHold();
   updateHUD();
   overlay.classList.add('hidden');
   if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
@@ -303,6 +343,11 @@ document.addEventListener('keydown', e => {
     case 'Space':
       e.preventDefault();
       hardDrop();
+      break;
+    case 'KeyC':
+    case 'ShiftLeft':
+    case 'ShiftRight':
+      holdPiece();
       break;
   }
   updateHUD();
@@ -331,6 +376,7 @@ themeToggle.addEventListener('click', () => {
   applyTheme(nextTheme);
   if (board) draw();
   if (next) drawNext();
+  drawHold();
 });
 
 initTheme();
