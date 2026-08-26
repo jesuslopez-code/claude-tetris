@@ -314,3 +314,64 @@ kbd {
 .mode-select.hidden {
   display: none;
 }
+
+/* ---- Menú de pausa ---- */
+.pause-menu.hidden,
+.pause-view.hidden {
+  display: none;
+}
+
+.pause-menu {
+  width: 220px;
+}
+
+.pause-view {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.pause-view .btn {
+  width: 100%;
+}
+
+.pause-field {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.pause-select {
+  background: var(--kbd-bg);
+  color: var(--fg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pause-hint {
+  font-size: 11px;
+  color: var(--controls-color);
+}
+
+.pause-controls-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.pause-controls-list li {
+  font-size: 12px;
+  color: var(--controls-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

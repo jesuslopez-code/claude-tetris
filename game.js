@@ -67,6 +67,14 @@ const modeLabel = document.getElementById('mode-label');
 const modeSelect = document.getElementById('mode-select');
 const modeClassicBtn = document.getElementById('mode-classic');
 const modeChallengeBtn = document.getElementById('mode-challenge');
+const pauseMenu = document.getElementById('pause-menu');
+const pauseMain = document.getElementById('pause-main');
+const pauseControls = document.getElementById('pause-controls');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseBackBtn = document.getElementById('pause-back-btn');
+const startLevelSelect = document.getElementById('start-level');
 const chargeFill = document.getElementById('charge-fill');
 const chargeBar = chargeFill.parentElement;
 const skillUsesEl = document.getElementById('skill-uses');
@@ -76,6 +84,10 @@ let board, current, next, score, lines, level, paused, gameOver, lastTime, dropA
 let hold, holdUsed, combo, pendingReward, flashCells, flashUntil;
 let mode = 'classic';
 let charge, skillUses, selectingMode;
+let startLevel = 1;
+// Copia congelada al empezar: cambiar el selector a mitad de partida no debe
+// alterar la progresión de la partida en curso.
+let currentStartLevel = 1;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -187,7 +199,7 @@ function clearLines() {
     if (cleared === 4) pendingReward = SINGLE; // Tetris: premio de pieza 1x1
     addCharge(cleared);
     score += (LINE_SCORES[cleared] || 0) * level * combo;
-    level = Math.floor(lines / 10) + 1;
+    level = Math.floor(lines / 10) + currentStartLevel;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -392,25 +404,46 @@ function endGame() {
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   restartBtn.classList.remove('hidden');
   modeSelect.classList.remove('hidden'); // permite cambiar de modo al reiniciar
+  pauseMenu.classList.add('hidden');
   overlay.classList.remove('hidden');
+}
+
+function showPauseView(view) {
+  pauseMain.classList.toggle('hidden', view !== 'main');
+  pauseControls.classList.toggle('hidden', view !== 'controls');
+}
+
+function openPauseMenu() {
+  paused = true;
+  if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
+  animId = null;
+  overlayTitle.textContent = 'PAUSA';
+  overlayScore.textContent = '';
+  restartBtn.classList.add('hidden');
+  modeSelect.classList.add('hidden');
+  showPauseView('main');
+  pauseMenu.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+}
+
+// Sin blur, el botón pulsado conserva el foco y Space/Enter lo volverían a activar.
+function dropFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
+
+function resumeGame() {
+  paused = false;
+  pauseMenu.classList.add('hidden');
+  overlay.classList.add('hidden');
+  dropFocus();
+  lastTime = performance.now();
+  if (animId === null || animId === undefined) animId = requestAnimationFrame(loop);
 }
 
 function togglePause() {
   if (gameOver || selectingMode) return;
-  paused = !paused;
-  if (!paused) {
-    overlay.classList.add('hidden');
-    lastTime = performance.now();
-    if (animId === null || animId === undefined) animId = requestAnimationFrame(loop);
-  } else {
-    if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
-    animId = null;
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    restartBtn.classList.remove('hidden');
-    modeSelect.classList.add('hidden');
-    overlay.classList.remove('hidden');
-  }
+  if (paused) resumeGame();
+  else openPauseMenu();
 }
 
 function loop(ts) {
@@ -436,7 +469,8 @@ function init() {
   board = mode === 'challenge' ? challengeBoard() : createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  currentStartLevel = startLevel;
+  level = currentStartLevel;
   combo = 0;
   hold = null;
   holdUsed = false;
@@ -448,7 +482,7 @@ function init() {
   selectingMode = false;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -457,13 +491,18 @@ function init() {
   updateHUD();
   overlay.classList.add('hidden');
   modeSelect.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
   restartBtn.classList.remove('hidden');
   if (animId !== null && animId !== undefined) cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  // Con el selector de nivel enfocado, Esc cierra su desplegable: no debe reanudar.
+  if (e.target === startLevelSelect && e.code === 'Escape') return;
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+  // Con el menú abierto Space haría scroll y reactivaría el botón enfocado.
+  if (e.code === 'Space' && e.target !== startLevelSelect) e.preventDefault();
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -480,7 +519,6 @@ document.addEventListener('keydown', e => {
       tryRotate();
       break;
     case 'Space':
-      e.preventDefault();
       hardDrop();
       break;
     case 'KeyC':
@@ -499,6 +537,31 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+resumeBtn.addEventListener('click', resumeGame);
+pauseRestartBtn.addEventListener('click', () => {
+  dropFocus();
+  init();
+});
+pauseControlsBtn.addEventListener('click', () => showPauseView('controls'));
+pauseBackBtn.addEventListener('click', () => showPauseView('main'));
+
+const START_LEVEL_STORAGE_KEY = 'tetris-start-level';
+
+function applyStartLevel(value) {
+  const parsed = Number.parseInt(value, 10);
+  startLevel = Number.isNaN(parsed) ? 1 : Math.min(10, Math.max(1, parsed));
+  startLevelSelect.value = String(startLevel);
+}
+
+function initStartLevel() {
+  applyStartLevel(localStorage.getItem(START_LEVEL_STORAGE_KEY));
+}
+
+startLevelSelect.addEventListener('change', () => {
+  applyStartLevel(startLevelSelect.value);
+  localStorage.setItem(START_LEVEL_STORAGE_KEY, String(startLevel));
+});
 
 const MODE_STORAGE_KEY = 'tetris-mode';
 
@@ -521,6 +584,7 @@ function openModeSelect() {
   overlayScore.textContent = '';
   restartBtn.classList.add('hidden');
   modeSelect.classList.remove('hidden');
+  pauseMenu.classList.add('hidden');
   overlay.classList.remove('hidden');
 }
 
@@ -559,5 +623,6 @@ themeToggle.addEventListener('click', () => {
 
 initTheme();
 initMode();
+initStartLevel();
 init();
 openModeSelect();
