@@ -170,6 +170,24 @@ body {
   text-shadow: 0 0 12px var(--combo-glow);
 }
 
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.skin-select:hover,
+.skin-select:focus {
+  border-color: var(--value-color);
+  outline: none;
+}
+
 /* ---- Modo y habilidades ---- */
 .mode-value {
   font-size: 13px;
