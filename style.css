@@ -314,3 +314,131 @@ kbd {
 .mode-select.hidden {
   display: none;
 }
+
+/* ---- Tabla de records ---- */
+.btn.btn-small {
+  margin-top: 0;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.record-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.record-form.hidden {
+  display: none;
+}
+
+.record-label {
+  font-size: 12px;
+  color: var(--controls-color);
+}
+
+.record-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#record-name {
+  width: 140px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+}
+
+#record-name:focus {
+  outline: none;
+  border-color: var(--value-color);
+}
+
+.records {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.records.hidden {
+  display: none;
+}
+
+.records-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--label-color);
+  font-weight: 600;
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--controls-color);
+}
+
+.records-table th {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--label-color);
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.records-table td {
+  padding: 3px 8px;
+  text-align: right;
+}
+
+.records-table td:nth-child(2) {
+  text-align: left;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-table tr.record-new td {
+  color: var(--combo-color);
+  text-shadow: 0 0 12px var(--combo-glow);
+}
+
+.records-empty {
+  color: var(--label-color);
+  text-align: center;
+}
+
+.records-stats {
+  font-size: 11px;
+  color: var(--controls-color);
+}
+
+.records-stats b {
+  color: var(--value-color);
+}
+
+.records-reset {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.reset-confirm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--controls-color);
+}
+
+.reset-confirm.hidden {
+  display: none;
+}

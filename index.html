@@ -84,6 +84,42 @@
           <button id="mode-classic" class="btn" type="button">Clásico</button>
           <button id="mode-challenge" class="btn" type="button">Desafío</button>
         </div>
+
+        <form id="record-form" class="record-form hidden">
+          <label class="record-label" for="record-name">¡Has entrado en el top 5! Escribe tu nombre:</label>
+          <div class="record-form-row">
+            <input id="record-name" type="text" maxlength="12" autocomplete="off" placeholder="Anónimo" />
+            <button class="btn btn-small" type="submit">Guardar</button>
+          </div>
+        </form>
+
+        <section id="records" class="records hidden" aria-label="Mejores puntuaciones">
+          <h2 class="records-title">MEJORES PUNTUACIONES</h2>
+          <table class="records-table">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Puntos</th>
+                <th scope="col">Líneas</th>
+                <th scope="col">Nivel</th>
+                <th scope="col">Combo</th>
+              </tr>
+            </thead>
+            <tbody id="records-body"></tbody>
+          </table>
+          <p class="records-stats">
+            Mejor combo: <b id="records-best-combo">—</b> · Líneas máximas: <b id="records-max-lines">—</b>
+          </p>
+          <div class="records-reset">
+            <button id="reset-records" class="btn btn-small" type="button">Resetear records</button>
+            <span id="reset-confirm" class="reset-confirm hidden">
+              ¿Seguro?
+              <button id="reset-yes" class="btn btn-small" type="button">Sí</button>
+              <button id="reset-no" class="btn btn-small" type="button">No</button>
+            </span>
+          </div>
+        </section>
       </div>
     </div>
   </div>
