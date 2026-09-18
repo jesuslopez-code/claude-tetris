@@ -69,7 +69,7 @@
             <li><kbd>C</kbd><kbd>Shift</kbd> reservar</li>
             <li><kbd>1</kbd> bomba</li>
             <li><kbd>2</kbd> pieza 1×1</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
@@ -120,6 +120,44 @@
             </span>
           </div>
         </section>
+
+        <div id="pause-menu" class="pause-menu hidden">
+          <div id="pause-main" class="pause-view">
+            <button id="resume-btn" class="btn" type="button">Reanudar</button>
+            <button id="pause-restart-btn" class="btn" type="button">Reiniciar</button>
+            <button id="pause-controls-btn" class="btn" type="button">Ver controles</button>
+            <div class="pause-field">
+              <label class="label" for="start-level">NIVEL INICIAL</label>
+              <select id="start-level" class="pause-select">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+              </select>
+              <p class="pause-hint">Se aplica a la próxima partida.</p>
+            </div>
+          </div>
+
+          <div id="pause-controls" class="pause-view hidden">
+            <ul class="pause-controls-list">
+              <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+              <li><kbd>↑</kbd> rotar</li>
+              <li><kbd>↓</kbd> bajar</li>
+              <li><kbd>Space</kbd> caída</li>
+              <li><kbd>C</kbd><kbd>Shift</kbd> reservar</li>
+              <li><kbd>1</kbd> bomba</li>
+              <li><kbd>2</kbd> pieza 1×1</li>
+              <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+            </ul>
+            <button id="pause-back-btn" class="btn" type="button">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
