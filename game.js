@@ -311,19 +311,122 @@ function updateHUD() {
   for (const row of skillRows) row.classList.toggle('skill-off', skillUses === 0);
 }
 
+function drawRetroCell(context, px, py, size, color) {
+  context.fillStyle = color;
+  context.fillRect(px + 1, py + 1, size - 2, size - 2);
+  context.fillStyle = 'rgba(255,255,255,0.12)';
+  context.fillRect(px + 1, py + 1, size - 2, 4);
+}
+
+function drawNeonCell(context, px, py, size, color) {
+  context.fillStyle = 'rgba(8,8,16,0.8)';
+  context.fillRect(px + 1, py + 1, size - 2, size - 2);
+  context.shadowColor = color;
+  context.shadowBlur = size * 0.35;
+  context.strokeStyle = color;
+  context.lineWidth = 2;
+  context.strokeRect(px + 2, py + 2, size - 4, size - 4);
+  // El mismo contexto pinta rejilla, destello y previews: dejar la sombra
+  // activa los contaminaría.
+  context.shadowBlur = 0;
+  context.lineWidth = 1;
+}
+
+function drawPastelCell(context, px, py, size, color) {
+  const radius = Math.max(2, size * 0.22);
+  context.fillStyle = color;
+  if (typeof context.roundRect === 'function') {
+    context.beginPath();
+    context.roundRect(px + 1, py + 1, size - 2, size - 2, radius);
+    context.fill();
+  } else {
+    context.fillRect(px + 1, py + 1, size - 2, size - 2);
+  }
+  context.fillStyle = 'rgba(255,255,255,0.35)';
+  context.fillRect(px + 4, py + 3, size - 8, 2);
+}
+
+function drawPixelCell(context, px, py, size, color) {
+  const step = size / 4;
+  context.fillStyle = color;
+  context.fillRect(px, py, size, size);
+  context.fillStyle = 'rgba(255,255,255,0.16)';
+  for (let r = 0; r < 4; r++)
+    for (let c = 0; c < 4; c++)
+      if ((r + c) % 2 === 0) context.fillRect(px + c * step, py + r * step, step, step);
+  context.fillStyle = 'rgba(0,0,0,0.35)';
+  context.fillRect(px, py + size - step / 2, size, step / 2);
+  context.fillRect(px + size - step / 2, py, step / 2, size);
+}
+
+const SKINS = {
+  retro: {
+    colors: COLORS,
+    drawCell: drawRetroCell,
+  },
+  neon: {
+    colors: [
+      null,
+      '#00fff7', // I
+      '#fff200', // O
+      '#ff00e6', // T
+      '#39ff14', // S
+      '#ff1744', // Z
+      '#2979ff', // J
+      '#ff9100', // L
+      '#ff0040', // bomba
+      '#ffea00', // single
+      '#b388ff', // hueca
+    ],
+    drawCell: drawNeonCell,
+  },
+  pastel: {
+    colors: [
+      null,
+      '#a8e6e3',
+      '#ffe9a8',
+      '#d9b8e8',
+      '#b8e6c1',
+      '#f5b7b1',
+      '#bcd4f0',
+      '#f8d0a8',
+      '#f4a6a6',
+      '#f7e6b0',
+      '#d6dde3',
+    ],
+    drawCell: drawPastelCell,
+  },
+  pixel: {
+    colors: [
+      null,
+      '#2ec4d6',
+      '#e8b923',
+      '#9c4dcc',
+      '#4caf50',
+      '#e53935',
+      '#3f7fd6',
+      '#f57c00',
+      '#d32f2f',
+      '#ffca28',
+      '#78909c',
+    ],
+    drawCell: drawPixelCell,
+  },
+};
+
+let skin = 'retro';
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  const active = SKINS[skin] || SKINS.retro;
+  const px = x * size;
+  const py = y * size;
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  active.drawCell(context, px, py, size, active.colors[colorIndex]);
   if (colorIndex === BOMB) {
     context.fillStyle = 'rgba(0,0,0,0.55)';
     context.beginPath();
-    context.arc(x * size + size / 2, y * size + size / 2, size * 0.28, 0, Math.PI * 2);
+    context.arc(px + size / 2, py + size / 2, size * 0.28, 0, Math.PI * 2);
     context.fill();
   }
   context.globalAlpha = 1;
@@ -512,8 +615,9 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
-  // Con el foco en el campo de nombre del record el teclado es suyo.
+  // El campo de nombre del record y el selector de skin capturan su propio teclado.
   if (e.target instanceof Element && e.target.matches('input, textarea')) return;
+  if (e.target === skinSelect) return;
   // Con el selector de nivel enfocado, Esc cierra su desplegable: no debe reanudar.
   if (e.target === startLevelSelect && e.code === 'Escape') return;
   if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
@@ -794,8 +898,31 @@ resetYesBtn.addEventListener('click', () => {
 
 resetNoBtn.addEventListener('click', cancelReset);
 
+const SKIN_STORAGE_KEY = 'tetris-skin';
+const skinSelect = document.getElementById('skin-select');
+
+function applySkin(value) {
+  skin = SKINS[value] ? value : 'retro';
+  skinSelect.value = skin;
+}
+
+function initSkin() {
+  applySkin(localStorage.getItem(SKIN_STORAGE_KEY));
+}
+
+skinSelect.addEventListener('change', () => {
+  const value = skinSelect.value;
+  localStorage.setItem(SKIN_STORAGE_KEY, value);
+  applySkin(value);
+  if (board) draw();
+  if (next) drawNext();
+  drawHold();
+  skinSelect.blur(); // devuelve el teclado al juego tras elegir
+});
+
 initTheme();
 initMode();
 initStartLevel();
+initSkin();
 init();
 openModeSelect();
